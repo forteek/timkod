@@ -2,14 +2,6 @@ from collections import Counter
 import json
 
 
-class Element:
-    def __init__(self, letter, occurrences):
-        self.letter = letter
-        self.occurrences = occurrences
-        self.left = None
-        self.right = None
-
-
 def count_element_occurrences(elements):
     element_counts = Counter(elements)
 
@@ -21,18 +13,24 @@ def generate_code(elements_probabilities):
 
     elements = []
     for letter, occurrences in elements_probabilities.items():
-        elements.append(Element(letter, occurrences))
+        elements.append({
+            'letter': letter,
+            'occurrences': occurrences,
+            'left': None,
+            'right': None
+        })
 
     while len(elements) > 1:
-        elements = sorted(elements, key=lambda element: element.occurrences)
+        elements = sorted(elements, key=lambda element: element['occurrences'])
         left = elements.pop(0)
         right = elements.pop(0)
 
-        new_element = Element(None, left.occurrences + right.occurrences)
-        new_element.left = left
-        new_element.right = right
-
-        elements.append(new_element)
+        elements.append({
+            'letter': None,
+            'occurrences': left['occurrences'] + right['occurrences'],
+            'left': left,
+            'right': right
+        })
 
     codebook = {}
     root = elements.pop(0)
@@ -41,12 +39,12 @@ def generate_code(elements_probabilities):
     return codebook
 
 def codebook_builder(element, code, codebook):
-    if element.letter is not None:
-        codebook[element.letter] = code
+    if element['letter'] is not None:
+        codebook[element['letter']] = code
         return
 
-    codebook_builder(element.left, code + '0', codebook)
-    codebook_builder(element.right, code + '1', codebook)
+    codebook_builder(element['left'], code + '0', codebook)
+    codebook_builder(element['right'], code + '1', codebook)
 
 
 def encode(text, codebook):
@@ -83,14 +81,14 @@ def decode(encoded_bytes, codebook):
 
 
 if __name__ == '__main__':
-    with open('plik', 'r') as file:
+    with open('test', 'r') as file:
         text = file.read()
 
     text += "\x00"
 
     letters_occurrences = count_element_occurrences(text)
     codebook = generate_code(letters_occurrences)
-    print(codebook)
+    # print(codebook)
 
     encoded_text = encode(text, codebook)
     with open('plik.bin', 'wb') as file:
@@ -98,10 +96,10 @@ if __name__ == '__main__':
     with open('plik.cb', 'w') as file:
         file.write(json.dumps(codebook))
 
-    # with open('plik.bin', 'rb') as file:
-    #     text = file.read()
-    # with open('plik.cb', 'r') as file:
-    #     codebook = json.loads(file.read())
-    #
-    # decoded_text = decode(text, codebook)
+    with open('plik.bin', 'rb') as file:
+        text = file.read()
+    with open('plik.cb', 'r') as file:
+        codebook = json.loads(file.read())
+
+    decoded_text = decode(text, codebook)
     # print(decoded_text)
