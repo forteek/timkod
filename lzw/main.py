@@ -191,7 +191,7 @@ def tuples_to_string(tuples, reverse_codebook):
 
 
 if __name__ == '__main__':
-    with open('plik', 'rb') as file:
+    with open('plik.bmp', 'rb') as file:
         text = file.read()
     # text = 'zazolc gesla jazn, kocham jesc placki. placek to ja jestem.'
 
