@@ -2,7 +2,7 @@ import math
 
 
 def encode(text, max_codebook_length = 2 ** 12):
-    codebook = {(i,): i for i in range(256)}
+    code = {(i,): i for i in range(256)}
     last_code = 256
 
     result = []
@@ -11,24 +11,24 @@ def encode(text, max_codebook_length = 2 ** 12):
     left_side = (text[0],)
     for right_side in text[1:]:
         both_sides = (*left_side, right_side)
-        if both_sides in codebook:
+        if both_sides in code:
             left_side = both_sides
         else:
             if last_code >= max_codebook_length:
-                result.append(codebook[left_side])
+                result.append(code[left_side])
                 left_side = (right_side,)
 
                 continue
 
-            result.append(codebook[left_side])
-            codebook[both_sides] = last_code
+            result.append(code[left_side])
+            code[both_sides] = last_code
             last_code += 1
             left_side = (right_side,)
 
-    result.append(codebook[left_side])
+    result.append(code[left_side])
 
-    length = math.ceil(math.log2(max_codebook_length))
-    fixed_length_codebook = {v: f'{v:0{length}b}' for k, v in codebook.items()}
+    length = math.ceil(math.log2(last_code))
+    fixed_length_codebook = {v: f'{v:0{length}b}' for k, v in code.items()}
 
     encoded_bitstring = ''.join(fixed_length_codebook[char] for char in result)
     encoded_bitstring += '0' * (8 - len(encoded_bitstring) % 8)
@@ -41,10 +41,10 @@ def encode(text, max_codebook_length = 2 ** 12):
     # print(reversed_codebook)
     # print(flatten([reversed_codebook[x] for x in result]))
 
-    return bytes(encoded_bytes), codebook
+    return bytes(encoded_bytes), length
 
 
-def decode(encoded_bytes, max_codebook_length = 2 ** 12):
+def decode(encoded_bytes, code_length):
     code = {i: chr(i) for i in range(256)}
     last_code = 256
     decoded_bitstring = ''.join(f'{byte:08b}' for byte in encoded_bytes)
@@ -52,7 +52,7 @@ def decode(encoded_bytes, max_codebook_length = 2 ** 12):
     result = bytearray()
     carry = ''
 
-    char_length = math.ceil(math.log2(max_codebook_length))
+    char_length = code_length
 
     chunks = [int(decoded_bitstring[i:i+char_length], 2) for i in range(0, len(decoded_bitstring), char_length)]
     old = chunks.pop(0)
@@ -105,13 +105,14 @@ if __name__ == '__main__':
     for file in files:
         print('zaczynam plik ' + file)
         filename, extension = file.split('.')
-        max_codebook_lengths = {'12': 2 ** 12, '18': 2 ** 18}
+        max_codebook_lengths = {'xx': 2 ** 128}
         for variant, max_codebook_length in max_codebook_lengths.items():
             print('zaczynam wariant ' + variant)
             with open(f'input/{filename}.{extension}', 'rb') as file:
                 text = file.read()
 
-            encoded_text, codebook = encode(text, max_codebook_length)
+            encoded_text, code_length = encode(text, max_codebook_length)
+            print('dugosc mi wyszla ', code_length)
 
             with open(f'output/{filename}.{variant}.bin', 'wb') as file:
                 file.write(encoded_text)
@@ -119,6 +120,6 @@ if __name__ == '__main__':
             with open(f'output/{filename}.{variant}.bin', 'rb') as file:
                 text = file.read()
 
-            decoded_text = decode(text, max_codebook_length)
+            decoded_text = decode(text, code_length)
             with open(f'proof/{filename}.{variant}.{extension}', 'wb') as file:
                 file.write(decoded_text)
