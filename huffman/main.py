@@ -81,7 +81,7 @@ def decode(encoded_bytes, codebook):
 
 
 if __name__ == '__main__':
-    with open('test', 'r') as file:
+    with open('plik', 'r') as file:
         text = file.read()
 
     text += "\x00"
@@ -96,10 +96,10 @@ if __name__ == '__main__':
     with open('plik.cb', 'w') as file:
         file.write(json.dumps(codebook))
 
-    with open('plik.bin', 'rb') as file:
-        text = file.read()
-    with open('plik.cb', 'r') as file:
-        codebook = json.loads(file.read())
-
-    decoded_text = decode(text, codebook)
+    # with open('plik.bin', 'rb') as file:
+    #     text = file.read()
+    # with open('plik.cb', 'r') as file:
+    #     codebook = json.loads(file.read())
+    #
+    # decoded_text = decode(text, codebook)
     # print(decoded_text)
