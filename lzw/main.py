@@ -44,19 +44,19 @@ def encode(text, max_codebook_length = 2 ** 12):
     return bytes(encoded_bytes), codebook
 
 
-def decode_letters(encoded_bytes, max_codebook_length = 2 ** 12):
+def decode(encoded_bytes, max_codebook_length = 2 ** 12):
     code = {i: chr(i) for i in range(256)}
     last_code = 256
     decoded_bitstring = ''.join(f'{byte:08b}' for byte in encoded_bytes)
 
-    result = ''
+    result = bytearray()
     carry = ''
 
     char_length = math.ceil(math.log2(max_codebook_length))
 
     chunks = [int(decoded_bitstring[i:i+char_length], 2) for i in range(0, len(decoded_bitstring), char_length)]
     old = chunks.pop(0)
-    result += code[old]
+    result.append(ord(code[old]))
 
     for chunk in chunks:
         if chunk in code:
@@ -64,7 +64,8 @@ def decode_letters(encoded_bytes, max_codebook_length = 2 ** 12):
         else:
             word = code[old] + carry
 
-        result += word
+        for char in word:
+            result.append(ord(char))
         carry = word[0]
 
         if last_code >= max_codebook_length:
@@ -75,100 +76,9 @@ def decode_letters(encoded_bytes, max_codebook_length = 2 ** 12):
         last_code += 1
         old = chunk
 
-    print(code)
+    # print(code)
 
-    return ''.join(result)
-
-
-def decode_new(encoded_bytes, max_codebook_length = 2 ** 12):
-    codebook = {(i,): i for i in range(256)}
-    reverse_codebook = {v: k for k, v in codebook.items()}
-    char_length = math.ceil(math.log2(max_codebook_length))
-
-    decoded_bitstring = ''
-    for byte in encoded_bytes:
-        decoded_bitstring += f'{byte:08b}'
-
-    decoded_bitstring = decoded_bitstring.rstrip('0')
-
-    result = []
-    carry = None
-    last_code = 256
-    old = (int(decoded_bitstring[:char_length], 2),)
-    result.append(codebook[old])
-
-    for i in range(char_length, len(decoded_bitstring), char_length):
-        new = int(decoded_bitstring[i:i + char_length], 2)
-
-        if new in reverse_codebook:
-            word_literal = reverse_codebook[new]
-        else:
-            if carry is not None:
-                word_literal = codebook[old] + [carry]
-            else:
-                word_literal = codebook[old]
-
-        result.append(word_literal)
-        carry = word_literal[0]
-
-        if last_code >= max_codebook_length:
-            old = (new,)
-            continue
-
-        codebook[(*old, carry)] = last_code
-        reverse_codebook[last_code] = (*old, carry)
-        last_code += 1
-        old = (new,)
-
-    return ''.join(chr(char) for char in flatten(result))
-
-def decode(encoded_bytes, max_codebook_length = 2 ** 12):
-    codebook = {(i,): i for i in range(256)}
-    reverse_codebook = {v: k for k, v in codebook.items()}
-    char_length = math.ceil(math.log2(max_codebook_length))
-
-    decoded_bitstring = ''
-    for byte in encoded_bytes:
-        decoded_bitstring += f'{byte:08b}'
-
-    decoded_bitstring = decoded_bitstring.rstrip('0')
-
-    result = []
-    carry = None
-    last_code = 256
-    old = (int(decoded_bitstring[:char_length], 2),)
-    result.append(codebook[old])
-
-    for i in range(char_length, len(decoded_bitstring), char_length):
-        if len(decoded_bitstring[i:i+char_length]) != char_length:
-            new = int(decoded_bitstring[i:i+char_length].ljust(char_length, '0'), 2)
-        else:
-            new = int(decoded_bitstring[i:i+char_length], 2)
-
-        if new in reverse_codebook:
-            word_literal = reverse_codebook[new]
-        else:
-            if carry is not None:
-                word_literal = codebook[old] + [carry]
-            else:
-                word_literal = codebook[old]
-
-        word_literal = tuples_to_string(word_literal, reverse_codebook)
-        for char in word_literal:
-            result.append(char)
-        carry = word_literal[0]
-
-        if last_code >= max_codebook_length:
-            old = (new,)
-            continue
-
-        codebook[(*old, carry)] = last_code
-        reverse_codebook[last_code] = (*old, carry)
-        last_code += 1
-        old = (new,)
-
-    return ''.join(chr(char) for char in flatten(result))
-
+    return result
 
 def flatten(list):
     items = []
@@ -191,21 +101,24 @@ def tuples_to_string(tuples, reverse_codebook):
 
 
 if __name__ == '__main__':
-    with open('plik.bmp', 'rb') as file:
-        text = file.read()
-    # text = 'zazolc gesla jazn, kocham jesc placki. placek to ja jestem.'
+    files = ['wiki_sample.txt', 'norm_wiki_sample.txt', 'lena.bmp']
+    for file in files:
+        print('zaczynam plik ' + file)
+        filename, extension = file.split('.')
+        max_codebook_lengths = {'12': 2 ** 12, '18': 2 ** 18}
+        for variant, max_codebook_length in max_codebook_lengths.items():
+            print('zaczynam wariant ' + variant)
+            with open(f'input/{filename}.{extension}', 'rb') as file:
+                text = file.read()
 
-    max_codebook_length = 2 ** 12
+            encoded_text, codebook = encode(text, max_codebook_length)
 
-    encoded_text, codebook = encode(text, max_codebook_length)
+            with open(f'output/{filename}.{variant}.bin', 'wb') as file:
+                file.write(encoded_text)
 
-    with open('plik.bin', 'wb') as file:
-        file.write(encoded_text)
+            with open(f'output/{filename}.{variant}.bin', 'rb') as file:
+                text = file.read()
 
-    with open('plik.bin', 'rb') as file:
-        text = file.read()
-
-    decoded_text = decode_letters(text, max_codebook_length)
-    with open('plik.out', 'w') as file:
-        file.write(decoded_text)
-    print(decoded_text[:1000])
+            decoded_text = decode(text, max_codebook_length)
+            with open(f'proof/{filename}.{variant}.{extension}', 'wb') as file:
+                file.write(decoded_text)
